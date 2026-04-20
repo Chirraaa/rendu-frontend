@@ -12,7 +12,7 @@
 
       <div class="flex gap-3">
         <div class="flex flex-column gap-2 flex-1">
-          <label for="firstName" class="font-medium">First Name</label>
+          <label for="firstName" class="font-medium">First Name <span class="text-red-400">*</span></label>
           <input
             pInputText
             id="firstName"
@@ -28,7 +28,7 @@
           </small>
         </div>
         <div class="flex flex-column gap-2 flex-1">
-          <label for="lastName" class="font-medium">Last Name</label>
+          <label for="lastName" class="font-medium">Last Name <span class="text-red-400">*</span></label>
           <input
             pInputText
             id="lastName"
@@ -46,7 +46,7 @@
       </div>
 
       <div class="flex flex-column gap-2">
-        <label for="email" class="font-medium">Email</label>
+        <label for="email" class="font-medium">Email <span class="text-red-400">*</span></label>
         <input
           pInputText
           id="email"
@@ -63,7 +63,7 @@
       </div>
 
       <div class="flex flex-column gap-2">
-        <label for="password" class="font-medium">Password</label>
+        <label for="password" class="font-medium">Password <span class="text-red-400">*</span></label>
         <p-password
           id="password"
           formControlName="password"
@@ -100,7 +100,7 @@
       </div>
 
       <div class="flex flex-column gap-2">
-        <label for="confirmPassword" class="font-medium">Confirm Password</label>
+        <label for="confirmPassword" class="font-medium">Confirm Password <span class="text-red-400">*</span></label>
         <p-password
           id="confirmPassword"
           formControlName="confirmPassword"
