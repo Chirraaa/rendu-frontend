@@ -1,0 +1,138 @@
+<div class="flex align-items-center justify-content-center min-h-screen p-3">
+  <p-card styleClass="w-full md:w-4 shadow-4">
+
+    <ng-template pTemplate="header">
+      <div class="text-center pt-4 pb-2">
+        <h2 class="text-3xl font-bold text-primary m-0">Kanban App</h2>
+        <p class="text-color-secondary mt-2">Create your account</p>
+      </div>
+    </ng-template>
+
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="flex flex-column gap-4">
+
+      <div class="flex gap-3">
+        <div class="flex flex-column gap-2 flex-1">
+          <label for="firstName" class="font-medium">First Name</label>
+          <input
+            pInputText
+            id="firstName"
+            type="text"
+            formControlName="firstName"
+            placeholder="John"
+            class="w-full"
+            [class.ng-invalid]="registerForm.get('firstName')?.invalid && registerForm.get('firstName')?.touched"
+          />
+          <small class="text-red-400"
+            *ngIf="registerForm.get('firstName')?.invalid && registerForm.get('firstName')?.touched">
+            Required.
+          </small>
+        </div>
+        <div class="flex flex-column gap-2 flex-1">
+          <label for="lastName" class="font-medium">Last Name</label>
+          <input
+            pInputText
+            id="lastName"
+            type="text"
+            formControlName="lastName"
+            placeholder="Doe"
+            class="w-full"
+            [class.ng-invalid]="registerForm.get('lastName')?.invalid && registerForm.get('lastName')?.touched"
+          />
+          <small class="text-red-400"
+            *ngIf="registerForm.get('lastName')?.invalid && registerForm.get('lastName')?.touched">
+            Required.
+          </small>
+        </div>
+      </div>
+
+      <div class="flex flex-column gap-2">
+        <label for="email" class="font-medium">Email</label>
+        <input
+          pInputText
+          id="email"
+          type="email"
+          formControlName="email"
+          placeholder="you@example.com"
+          class="w-full"
+          [class.ng-invalid]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched"
+        />
+        <small class="text-red-400"
+          *ngIf="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
+          Please enter a valid email.
+        </small>
+      </div>
+
+      <div class="flex flex-column gap-2">
+        <label for="password" class="font-medium">Password</label>
+        <p-password
+          id="password"
+          formControlName="password"
+          placeholder="••••••••••"
+          [feedback]="false"
+          [toggleMask]="true"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+          (onFocus)="passwordFocused = true"
+          (onBlur)="passwordFocused = false"
+        />
+        <div *ngIf="showRules" class="flex flex-column gap-1 mt-1">
+          <div class="flex align-items-center gap-2 text-sm"
+               [class.text-green-500]="reqMinLength" [class.text-red-400]="!reqMinLength">
+            <i [class]="reqMinLength ? 'pi pi-check-circle' : 'pi pi-times-circle'"></i>
+            <span>At least 8 characters</span>
+          </div>
+          <div class="flex align-items-center gap-2 text-sm"
+               [class.text-green-500]="reqUppercase" [class.text-red-400]="!reqUppercase">
+            <i [class]="reqUppercase ? 'pi pi-check-circle' : 'pi pi-times-circle'"></i>
+            <span>One uppercase letter</span>
+          </div>
+          <div class="flex align-items-center gap-2 text-sm"
+               [class.text-green-500]="reqNumber" [class.text-red-400]="!reqNumber">
+            <i [class]="reqNumber ? 'pi pi-check-circle' : 'pi pi-times-circle'"></i>
+            <span>One number</span>
+          </div>
+          <div class="flex align-items-center gap-2 text-sm"
+               [class.text-green-500]="reqSpecial" [class.text-red-400]="!reqSpecial">
+            <i [class]="reqSpecial ? 'pi pi-check-circle' : 'pi pi-times-circle'"></i>
+            <span>One special character (e.g. !@#$)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-column gap-2">
+        <label for="confirmPassword" class="font-medium">Confirm Password</label>
+        <p-password
+          id="confirmPassword"
+          formControlName="confirmPassword"
+          placeholder="••••••••••"
+          [feedback]="false"
+          [toggleMask]="true"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+        <small class="text-red-400"
+          *ngIf="registerForm.errors?.['passwordsMismatch'] && registerForm.get('confirmPassword')?.touched">
+          Passwords do not match.
+        </small>
+      </div>
+
+      <p-message *ngIf="errorMessage" severity="error" [text]="errorMessage" styleClass="w-full" />
+      <p-message *ngIf="successMessage" severity="success" [text]="successMessage" styleClass="w-full" />
+
+      <p-button
+        type="submit"
+        label="Create account"
+        styleClass="w-full"
+        [loading]="loading"
+        [disabled]="registerForm.invalid || loading"
+      />
+
+      <div class="text-center text-color-secondary text-sm">
+        Already have an account?
+        <a routerLink="/login" class="text-primary font-medium cursor-pointer ml-1">Sign in</a>
+      </div>
+
+    </form>
+
+  </p-card>
+</div>

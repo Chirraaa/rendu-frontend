@@ -1,0 +1,81 @@
+<div class="flex align-items-center justify-content-center min-h-screen p-3">
+  <p-card styleClass="w-full md:w-4 shadow-4">
+
+    <ng-template pTemplate="header">
+      <div class="text-center pt-4 pb-2">
+        <h2 class="text-3xl font-bold text-primary m-0">Kanban App</h2>
+        <p class="text-color-secondary mt-2">Sign in to your account</p>
+      </div>
+    </ng-template>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="flex flex-column gap-4">
+
+      <div class="flex flex-column gap-2">
+        <label for="email" class="font-medium">Email</label>
+        <input
+          pInputText
+          id="email"
+          type="email"
+          formControlName="email"
+          placeholder="you@example.com"
+          class="w-full"
+          [class.ng-invalid]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+        />
+        <small
+          class="text-red-400"
+          *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
+          Please enter a valid email.
+        </small>
+      </div>
+
+      <div class="flex flex-column gap-2">
+        <label for="password" class="font-medium">Password</label>
+        <p-password
+          id="password"
+          formControlName="password"
+          placeholder="••••••••"
+          [feedback]="false"
+          [toggleMask]="true"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+        <small
+          class="text-red-400"
+          *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+          Password is required.
+        </small>
+      </div>
+
+      <div class="flex align-items-center gap-2">
+        <p-checkbox
+          formControlName="rememberMe"
+          [binary]="true"
+          inputId="rememberMe"
+        />
+        <label for="rememberMe" class="cursor-pointer">Remember me</label>
+      </div>
+
+      <p-message
+        *ngIf="errorMessage"
+        severity="error"
+        [text]="errorMessage"
+        styleClass="w-full"
+      />
+
+      <p-button
+        type="submit"
+        label="Sign in"
+        styleClass="w-full"
+        [loading]="loading"
+        [disabled]="loginForm.invalid || loading"
+      />
+
+      <div class="text-center text-color-secondary text-sm">
+        Don't have an account?
+        <a routerLink="/register" class="text-primary font-medium cursor-pointer ml-1">Sign up</a>
+      </div>
+
+    </form>
+
+  </p-card>
+</div>

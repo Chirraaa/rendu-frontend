@@ -1,0 +1,352 @@
+<p-toast />
+<p-confirmDialog />
+
+<div class="flex align-items-center px-5 py-3 sticky top-0 z-5"
+     style="background: var(--surface-card); border-bottom: 1px solid var(--surface-border)">
+
+  <div class="flex align-items-center gap-3" style="flex: 0 0 auto">
+    <p-button icon="pi pi-arrow-left" severity="secondary" [rounded]="true" [text]="true"
+              (onClick)="router.navigate(['/dashboard'])" />
+    <span class="text-xl font-bold white-space-nowrap">{{ board?.name }}</span>
+    <p-tag *ngIf="board" [value]="board.currentUserRole"
+           [severity]="isAdmin ? 'warn' : 'secondary'" />
+    <span class="text-color-secondary text-sm white-space-nowrap">
+      <i class="pi pi-clock mr-1"></i>{{ displayTotalHours }}h
+    </span>
+    <i *ngIf="connectionStatus !== 'hidden'" class="pi text-sm"
+       [ngClass]="connectionStatus === 'connected' ? 'pi-wifi text-green-400' : 'pi-wifi-off text-orange-400'"
+       [pTooltip]="connectionStatus === 'connected' ? 'Synced' : 'Not synced'"
+       tooltipPosition="bottom"></i>
+  </div>
+
+  <div class="flex justify-content-center" style="flex: 1; min-width: 0">
+    <p-iconfield *ngIf="isGlobalView">
+      <p-inputicon styleClass="pi pi-search" />
+      <input pInputText
+             size="small"
+             [(ngModel)]="searchText"
+             (ngModelChange)="computeDisplayColumns()"
+             placeholder="Search tickets..."
+             class="search-input" />
+      <p-inputicon *ngIf="searchText"
+                   styleClass="pi pi-times cursor-pointer"
+                   (click)="clearSearch()" />
+    </p-iconfield>
+  </div>
+
+  <div class="flex align-items-center justify-content-end gap-3" style="flex: 0 0 auto">
+
+    <!-- View switcher (admin only) -->
+    <p-buttonGroup *ngIf="isAdmin" size="small">
+      <p-button icon="pi pi-user"
+                [severity]="isMemberView ? 'primary' : 'secondary'"
+                [outlined]="!isMemberView"
+                [pTooltip]="isMemberView ? selectedMemberEmail : 'View as member'"
+                tooltipPosition="bottom"
+                (onClick)="memberPickerSearch = ''; showMemberPickerDialog = true" />
+      <p-button label="Global"
+                [severity]="isGlobalView ? 'primary' : 'secondary'"
+                [outlined]="!isGlobalView"
+                styleClass="white-space-nowrap"
+                (onClick)="selectedViewUserId = 'global'" />
+      <p-button label="My View"
+                [severity]="selectedViewUserId === null ? 'primary' : 'secondary'"
+                [outlined]="selectedViewUserId !== null"
+                styleClass="white-space-nowrap"
+                (onClick)="selectedViewUserId = null" />
+    </p-buttonGroup>
+
+    <p-button *ngIf="isAdmin" icon="pi pi-users" severity="secondary" [rounded]="true"
+              size="small" pTooltip="Members" tooltipPosition="bottom"
+              (onClick)="showMembersDialog = true" />
+    <p-button *ngIf="isAdmin && isGlobalView" icon="pi pi-plus" [rounded]="true"
+              size="small" pTooltip="Add Column" tooltipPosition="bottom"
+              (onClick)="showAddColumnDialog = true" />
+  </div>
+
+</div>
+
+<div *ngIf="loading" class="flex gap-4 p-5 overflow-x-auto">
+  <div *ngFor="let i of [1,2,3]" class="flex-shrink-0" style="width: 300px">
+    <p-card>
+      <p-skeleton height="1.5rem" styleClass="mb-3" />
+      <p-skeleton height="5rem" styleClass="mb-2" />
+      <p-skeleton height="5rem" />
+    </p-card>
+  </div>
+</div>
+
+<div *ngIf="!loading && board?.columns?.length === 0"
+     class="flex flex-column align-items-center justify-content-center py-8 gap-3">
+  <i class="pi pi-th-large text-6xl text-color-secondary"></i>
+  <p class="text-color-secondary text-lg m-0">No columns yet</p>
+  <p-button *ngIf="isAdmin" label="Add your first column" icon="pi pi-plus"
+            (onClick)="showAddColumnDialog = true" />
+</div>
+
+<!-- shared column menu, one instance reused for all columns -->
+<p-menu #columnMenu [popup]="true" [model]="columnMenuItems" appendTo="body" />
+
+<div *ngIf="!loading && board" class="p-4">
+  <div class="board-scroll"
+       cdkDropList
+       cdkDropListOrientation="horizontal"
+       [cdkDropListData]="board!.columns"
+       (cdkDropListDropped)="onColumnDrop($event)">
+    <div
+      *ngFor="let col of displayColumns"
+      class="column-wrapper"
+      cdkDrag
+      [cdkDragDisabled]="!isGlobalView"
+      (cdkDragStarted)="onDragStarted()"
+    >
+      <div class="column-header-inner flex align-items-center justify-content-between"
+           [class.is-draggable]="isGlobalView"
+           cdkDragHandle>
+        <div class="flex align-items-center gap-2">
+          <span class="font-semibold">{{ col.name }}</span>
+          <span class="text-color-secondary text-sm">({{ col.ticketCount }})</span>
+        </div>
+        <div class="flex align-items-center gap-2">
+          <span class="text-color-secondary text-xs">{{ col.totalHours }}h</span>
+          <p-button *ngIf="isAdmin && isGlobalView"
+                    icon="pi pi-ellipsis-v" [text]="true" [rounded]="true"
+                    size="small" severity="secondary"
+                    (onClick)="openColumnMenu($event, col, columnMenu); $event.stopPropagation()" />
+        </div>
+      </div>
+
+      <div
+        class="ticket-list"
+        cdkDropList
+        [id]="'col-' + col.id"
+        [cdkDropListData]="col.tickets"
+        [cdkDropListConnectedTo]="columnIds"
+        [cdkDropListDisabled]="isFiltered && !isGlobalView"
+        (cdkDropListDropped)="onTicketDrop($event, col)"
+      >
+        <div
+          *ngFor="let ticket of col.tickets"
+          class="ticket-card mb-2"
+          cdkDrag
+          [cdkDragDisabled]="isFiltered && !isGlobalView"
+          (cdkDragStarted)="onDragStarted()"
+        >
+          <div class="flex align-items-start justify-content-between">
+            <span class="font-medium text-sm">{{ ticket.title }}</span>
+            <div class="flex gap-1 ml-2 flex-shrink-0">
+              <p-button icon="pi pi-history" [text]="true" [rounded]="true"
+                        size="small" severity="secondary" pTooltip="Movement history"
+                        (onClick)="openHistory(ticket)" />
+              <p-button *ngIf="isAdmin || !isFiltered" icon="pi pi-pencil" [text]="true" [rounded]="true"
+                        size="small" severity="secondary" (onClick)="openEditTicket(ticket)" />
+              <p-button *ngIf="isAdmin" icon="pi pi-trash" [text]="true" [rounded]="true"
+                        size="small" severity="danger" (onClick)="deleteTicket(ticket, col)" />
+            </div>
+          </div>
+          <div *ngIf="ticket.description" class="text-color-secondary text-xs mt-1">
+            {{ ticket.description }}
+          </div>
+          <div class="flex align-items-center justify-content-between mt-2">
+            <span class="text-xs text-color-secondary" *ngIf="!isGlobalView">
+              <i class="pi pi-user mr-1"></i>{{ ticket.assignedToName || 'Unassigned' }}
+            </span>
+            <p-select *ngIf="isGlobalView"
+                      [ngModel]="ticket.assignedToUserId"
+                      (ngModelChange)="assignTicket(ticket, $event)"
+                      [options]="assignableMembers"
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Unassigned"
+                      size="small"
+                      styleClass="text-xs"
+                      (click)="$event.stopPropagation()" />
+            <span class="text-xs font-medium">{{ ticket.timeSpent }}h</span>
+          </div>
+        </div>
+
+        <p-button
+          *ngIf="!isFiltered || isGlobalView"
+          icon="pi pi-plus"
+          label="Add ticket"
+          [text]="true"
+          size="small"
+          styleClass="w-full mt-1"
+          (onClick)="openAddTicket(col.id)"
+        />
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Column Dialog -->
+<p-dialog header="Add Column" [(visible)]="showAddColumnDialog" [modal]="true"
+          [style]="{ width: '360px', maxWidth: '95vw' }" [draggable]="false">
+  <div class="flex flex-column gap-3 pt-2">
+    <label class="font-medium">Column name</label>
+    <input pInputText [(ngModel)]="newColumnName" placeholder="e.g. In Progress"
+           class="w-full" (keyup.enter)="addColumn()" />
+  </div>
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" severity="secondary" (onClick)="showAddColumnDialog = false" />
+    <p-button label="Add" [disabled]="!newColumnName.trim()" (onClick)="addColumn()" />
+  </ng-template>
+</p-dialog>
+
+<!-- Edit Column Dialog -->
+<p-dialog header="Rename Column" [(visible)]="showEditColumnDialog" [modal]="true"
+          [style]="{ width: '360px', maxWidth: '95vw' }" [draggable]="false">
+  <div class="flex flex-column gap-3 pt-2">
+    <label class="font-medium">Column name</label>
+    <input pInputText [(ngModel)]="editColumnName" class="w-full"
+           (keyup.enter)="saveEditColumn()" />
+  </div>
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" severity="secondary" (onClick)="showEditColumnDialog = false" />
+    <p-button label="Save" [disabled]="!editColumnName.trim()" (onClick)="saveEditColumn()" />
+  </ng-template>
+</p-dialog>
+
+<!-- Ticket Dialog -->
+<p-dialog [header]="editingTicket ? 'Edit Ticket' : 'New Ticket'"
+          [(visible)]="showTicketDialog" [modal]="true"
+          [style]="{ width: '480px', maxWidth: '95vw' }" [draggable]="false">
+  <div class="flex flex-column gap-4 pt-2">
+    <div class="flex flex-column gap-2">
+      <label class="font-medium">Title *</label>
+      <input pInputText [(ngModel)]="ticketForm.title" placeholder="Ticket title" class="w-full" />
+    </div>
+    <div class="flex flex-column gap-2">
+      <label class="font-medium">Description</label>
+      <textarea pTextarea [(ngModel)]="ticketForm.description"
+                placeholder="Optional description" rows="3" class="w-full"></textarea>
+    </div>
+    <div class="flex flex-column gap-2">
+      <label class="font-medium">Time spent (hours)</label>
+      <p-inputNumber [(ngModel)]="ticketForm.timeSpent" [min]="0" [step]="0.5"
+                     mode="decimal" styleClass="w-full" />
+    </div>
+    <div *ngIf="isGlobalView && !editingTicket" class="flex flex-column gap-2">
+      <label class="font-medium">Assign to</label>
+      <p-select [(ngModel)]="ticketForm.assignedToUserId"
+                [options]="assignableMembers"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select a member..."
+                styleClass="w-full"
+                appendTo="body" />
+    </div>
+  </div>
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" severity="secondary" (onClick)="showTicketDialog = false" />
+    <p-button [label]="editingTicket ? 'Save' : 'Create'" [loading]="savingTicket"
+              [disabled]="!ticketForm.title.trim() || savingTicket" (onClick)="saveTicket()" />
+  </ng-template>
+</p-dialog>
+
+<!-- History Dialog -->
+<p-dialog [header]="'Movement History' + (historyTicket ? ': ' + historyTicket.title : '')"
+          [(visible)]="showHistoryDialog" [modal]="true"
+          [style]="{ width: '440px', maxWidth: '95vw' }" [draggable]="false">
+  <div *ngIf="historyLoading" class="flex flex-column gap-2 py-2">
+    <p-skeleton *ngFor="let i of [1,2,3]" height="2rem" />
+  </div>
+  <div *ngIf="!historyLoading && ticketHistory.length === 0"
+       class="text-color-secondary text-center py-4">
+    No movement history yet.
+  </div>
+  <div *ngFor="let h of ticketHistory; let last = last"
+       class="flex align-items-center gap-2 py-2"
+       [style]="!last ? 'border-bottom: 1px solid var(--surface-border)' : ''">
+    <span class="text-sm font-medium">{{ h.fromColumnName }}</span>
+    <i class="pi pi-arrow-right text-color-secondary text-xs"></i>
+    <span class="text-sm font-medium">{{ h.toColumnName }}</span>
+    <span class="text-xs text-color-secondary ml-auto">{{ h.movedAt | date:'short' }}</span>
+  </div>
+</p-dialog>
+
+<!-- Members Dialog -->
+<p-dialog header="Manage Members" [(visible)]="showMembersDialog" [modal]="true"
+          [style]="{ width: '500px', maxWidth: '95vw' }" [draggable]="false">
+  <div class="flex flex-column gap-4 pt-2">
+
+    <div class="flex flex-column gap-2">
+      <label class="font-medium">Invite by email</label>
+      <div class="flex gap-2">
+        <input pInputText [(ngModel)]="inviteEmail" placeholder="user@example.com"
+               class="flex-1" (keyup.enter)="inviteMember()" />
+        <p-button label="Invite" [loading]="inviting"
+                  [disabled]="!inviteEmail.trim() || inviting" (onClick)="inviteMember()" />
+      </div>
+    </div>
+
+    <div class="flex flex-column gap-2">
+      <label class="font-medium">Members ({{ board?.members?.length ?? 0 }})</label>
+      <div *ngFor="let member of board?.members"
+           class="flex align-items-center justify-content-between p-2 border-round member-picker-row">
+        <div class="flex align-items-center gap-2">
+          <i class="pi pi-user text-color-secondary"></i>
+          <div class="flex flex-column">
+            <span class="text-sm font-medium">{{ member.firstName }} {{ member.lastName }}</span>
+            <span class="text-xs text-color-secondary">{{ member.email }}</span>
+          </div>
+          <p-tag *ngIf="member.userId === board!.createdByUserId"
+                 value="Owner" severity="contrast" />
+        </div>
+        <div class="flex align-items-center gap-2">
+          <p-tag [value]="member.role" [severity]="member.role === 'Admin' ? 'warn' : 'secondary'" />
+          <p-button *ngIf="isOwner && member.role !== 'Admin'" icon="pi pi-arrow-up" [text]="true"
+                    [rounded]="true" size="small" pTooltip="Make Admin"
+                    (onClick)="updateMemberRole(member, 'Admin')" />
+          <p-button *ngIf="isOwner && member.role === 'Admin' && member.userId !== board!.createdByUserId"
+                    icon="pi pi-arrow-down" [text]="true"
+                    [rounded]="true" size="small" pTooltip="Make Member"
+                    (onClick)="updateMemberRole(member, 'Member')" />
+          <p-button *ngIf="member.userId !== board!.createdByUserId"
+                    icon="pi pi-times" [text]="true" [rounded]="true"
+                    size="small" severity="danger"
+                    (onClick)="removeMember(member)" />
+        </div>
+      </div>
+    </div>
+
+  </div>
+</p-dialog>
+
+<!-- Member Picker Dialog -->
+<p-dialog header="View as Member" [(visible)]="showMemberPickerDialog" [modal]="true"
+          [style]="{ width: '420px', maxWidth: '95vw' }" [draggable]="false">
+  <div class="flex flex-column gap-3 pt-2">
+
+    <p-iconfield>
+      <p-inputicon styleClass="pi pi-search" />
+      <input pInputText [(ngModel)]="memberPickerSearch" placeholder="Search by name or email..."
+             class="w-full" />
+    </p-iconfield>
+
+    <div class="flex flex-column gap-1" style="max-height: min(320px, 50vh); overflow-y: auto">
+      <div *ngIf="filteredMemberPickerList.length === 0"
+           class="text-color-secondary text-center py-4 text-sm">
+        No members found.
+      </div>
+      <div *ngFor="let member of filteredMemberPickerList"
+           class="flex align-items-center justify-content-between p-2 border-round cursor-pointer member-picker-row"
+           [class.member-picker-active]="member.userId === selectedViewUserId"
+           (click)="selectMemberView(member.userId)">
+        <div class="flex align-items-center gap-2">
+          <i class="pi pi-user text-color-secondary"></i>
+          <div class="flex flex-column">
+            <span class="text-sm font-medium">{{ member.firstName }} {{ member.lastName }}</span>
+            <span class="text-xs text-color-secondary">{{ member.email }}</span>
+          </div>
+          <p-tag *ngIf="member.userId === board!.createdByUserId" value="Owner" severity="contrast" />
+        </div>
+        <p-tag [value]="member.role" [severity]="member.role === 'Admin' ? 'warn' : 'secondary'" />
+      </div>
+    </div>
+
+  </div>
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" severity="secondary" (onClick)="showMemberPickerDialog = false" />
+  </ng-template>
+</p-dialog>

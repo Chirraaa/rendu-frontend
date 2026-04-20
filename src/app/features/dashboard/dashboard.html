@@ -1,0 +1,92 @@
+<p-toast />
+<p-confirmdialog />
+
+<div class="min-h-screen" style="background: var(--surface-ground)">
+
+  <div class="flex align-items-center justify-content-between px-5"
+    style="height: 60px; background: var(--surface-card); box-shadow: 0 2px 8px rgba(0,0,0,0.08)">
+    <span class="text-xl font-bold text-primary">Kanban App</span>
+    <div class="flex align-items-center gap-3">
+      <div class="flex flex-column align-items-end">
+        <span class="text-sm font-medium">{{ authService.currentUser()?.firstName }} {{ authService.currentUser()?.lastName }}</span>
+        <span class="text-xs text-color-secondary">{{ authService.currentUser()?.email }}</span>
+      </div>
+      <p-button label="Logout" severity="secondary" size="small" (onClick)="logout()" />
+    </div>
+  </div>
+
+  <div class="px-5 py-6 max-w-screen-lg mx-auto">
+
+    <div class="flex align-items-center justify-content-between mb-6">
+      <div>
+        <h1 class="text-4xl font-bold m-0">My Boards</h1>
+        <p class="text-color-secondary mt-2 mb-0">Manage and switch between your kanban boards</p>
+      </div>
+      <p-button *ngIf="!loading && kanbans.length > 0"
+        label="New Board" icon="pi pi-plus" (onClick)="openCreateDialog()" />
+    </div>
+
+    <div *ngIf="loading" class="grid">
+      <div class="col-12 md:col-4" *ngFor="let i of [1,2,3]">
+        <p-card styleClass="h-full">
+          <p-skeleton height="1.5rem" styleClass="mb-3" />
+          <p-skeleton height="1rem" width="60%" styleClass="mb-2" />
+          <p-skeleton height="1rem" width="40%" />
+        </p-card>
+      </div>
+    </div>
+
+    <div *ngIf="!loading && kanbans.length === 0"
+      class="flex flex-column align-items-center justify-content-center py-8 gap-3">
+      <i class="pi pi-th-large text-6xl text-color-secondary"></i>
+      <p class="text-color-secondary text-lg m-0">No boards yet</p>
+      <p-button label="Create your first board" icon="pi pi-plus" (onClick)="openCreateDialog()" />
+    </div>
+
+    <div *ngIf="!loading && kanbans.length > 0" class="grid">
+      <div class="col-12 md:col-4" *ngFor="let kanban of kanbans">
+        <p-card styleClass="h-full cursor-pointer hover-card" (click)="openKanban(kanban.id)">
+          <div class="flex flex-column gap-3">
+            <div class="flex align-items-center justify-content-between">
+              <span class="text-xl font-semibold">{{ kanban.name }}</span>
+              <p-tag [value]="kanban.role" [severity]="kanban.role === 'Admin' ? 'warn' : 'secondary'" />
+            </div>
+            <div class="flex align-items-center gap-2 text-color-secondary text-sm">
+              <i class="pi pi-users"></i>
+              <span>{{ kanban.memberCount }} member{{ kanban.memberCount > 1 ? 's' : '' }}</span>
+            </div>
+            <div class="flex align-items-center justify-content-between text-color-secondary text-sm">
+              <div class="flex align-items-center gap-2">
+                <i class="pi pi-calendar"></i>
+                <span>{{ kanban.createdAt | date:'mediumDate' }}</span>
+              </div>
+              <p-button
+                [icon]="kanban.role === 'Admin' ? 'pi pi-trash' : 'pi pi-sign-out'"
+                [severity]="kanban.role === 'Admin' ? 'danger' : 'secondary'"
+                [pTooltip]="kanban.role === 'Admin' ? 'Delete board' : 'Leave board'"
+                tooltipPosition="top"
+                [text]="true" [rounded]="true" size="small"
+                (click)="deleteKanban(kanban, $event)" />
+            </div>
+          </div>
+        </p-card>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Create board dialog -->
+<p-dialog header="New Board" [(visible)]="showCreateDialog" [modal]="true"
+  [style]="{ width: '400px', maxWidth: '95vw' }" [draggable]="false">
+  <div class="flex flex-column gap-3 pt-2">
+    <label for="boardName" class="font-medium">Board name</label>
+    <input pInputText id="boardName" [(ngModel)]="newKanbanName" placeholder="e.g. Project Alpha" class="w-full"
+      (keyup.enter)="createKanban()" />
+  </div>
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" severity="secondary" (onClick)="showCreateDialog = false" />
+    <p-button label="Create" [loading]="creating" [disabled]="!newKanbanName.trim() || creating"
+      (onClick)="createKanban()" />
+  </ng-template>
+</p-dialog>
